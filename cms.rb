@@ -11,6 +11,10 @@ configure do
   set :session_secret, 'super secret'
 end
 
+before do
+  session[:username] ||= nil
+end
+
 def data_path
   if ENV["RACK_ENV"] == 'test'
     File.expand_path("../test/data", __FILE__)
@@ -46,9 +50,36 @@ def nonexistant_file(file)
 end
 
 get '/' do
-  pattern = File.join(data_path, "*")
-  @docs = Dir.glob(pattern).map { |file| File.basename file }
-  erb :home
+  if session[:username]
+    pattern = File.join(data_path, "*")
+    @docs = Dir.glob(pattern).map { |file| File.basename file }
+    erb :home
+  else
+    redirect "/users/signin"
+  end
+end
+
+post "/users/signin" do
+  username = params[:username]
+  password = params[:password]
+  if username == 'admin' && password == 'secret'
+    session[:username] = username
+    session[:message] = 'Welcome!'
+    redirect '/'
+  else
+    session[:message] = 'Invalid Credentials'
+    erb :signin
+  end
+end
+
+post "/users/signout" do
+  session[:username] = nil
+  session[:message] = "You have been logged out."
+  redirect "/users/signin"
+end
+
+get '/users/signin' do
+  erb :signin
 end
 
 get '/new' do

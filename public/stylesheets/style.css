@@ -15,3 +15,7 @@ p.message {
 form.delete {
   display: inline;
 }
+
+form.signout label {
+  font-style: italic;
+}

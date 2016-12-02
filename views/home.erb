@@ -10,4 +10,14 @@
   <% end %>
 </ul>
 
-<a href="/new">New Document</a>
+<div class="footer">
+  <a href="/new">New Document</a>
+  <br>
+  <br>
+  <% if session[:username] %>
+    <form class="signout" action="users/signout" method="post">
+      <label for="signout">Signed in as <%= session[:username] %>.</label>
+      <input type="submit" value="Sign Out">
+    </form>
+  <% end %>
+</div>
