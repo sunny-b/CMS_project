@@ -1,5 +1,13 @@
 <ul>
   <% @docs.each do |doc| %>
-    <li><a href="/<%= doc %>"><%= doc %></a></li>
+    <li>
+      <a href="/<%= doc %>"><%= doc %></a>
+      <a href="/<%= doc %>/edit">edit</a>
+      <form class="delete" action="/<%= doc %>/destroy" method="post">
+        <button type="submit">Delete</button>
+      </form>
+    </li>
   <% end %>
 </ul>
+
+<a href="/new">New Document</a>

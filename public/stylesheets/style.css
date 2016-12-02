@@ -1,0 +1,17 @@
+html, dl, dd {
+  margin: 0px;
+}
+
+body {
+  padding: 1em;
+  font-family: sans-serif;
+}
+
+p.message {
+  padding: 10px;
+  background: yellow;
+}
+
+form.delete {
+  display: inline;
+}
