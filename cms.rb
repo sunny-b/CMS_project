@@ -4,8 +4,8 @@ require 'sinatra/content_for'
 require 'tilt/erubis'
 require 'rack'
 require 'redcarpet'
-require 'bcrypt'
 require 'yaml'
+require 'bcrypt'
 require 'pry'
 
 configure do
@@ -75,16 +75,19 @@ get '/' do
   erb :home
 end
 
-def correct_login?(users, user, password)
-  users[user] == password
+def correct_login?(user, password)
+  users = load_user_credentials
+  if users.key? user
+    BCrypt::Password.new(users[user]) == password
+  else
+    false
+  end
 end
 
 post "/users/signin" do
-  users = load_user_credentials
-
   username = params[:username]
-  password = BCrypt::Password.create(params[:password])
-  if correct_login?(users, username, password)
+  password = params[:password]
+  if correct_login?(username, password)
     session[:username] = username
     session[:message] = 'Welcome!'
     redirect '/'
