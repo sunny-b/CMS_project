@@ -90,7 +90,7 @@ class CMSTest < Minitest::Test
   def test_edit_page
     create_document 'about.txt', "Edit content of about.txt:"
 
-    get '/about.txt/edit'
+    get '/about.txt/edit', {}, admin_signin
     assert_equal 200, last_response.status
     assert_includes last_response.body, "Edit content of about.txt:"
   end
@@ -108,7 +108,7 @@ class CMSTest < Minitest::Test
   end
 
   def test_new_file_form
-    get '/new'
+    get '/new', {}, admin_signin
     assert_equal 200, last_response.status
     assert_includes last_response.body, "Add a new document:"
   end
@@ -124,13 +124,13 @@ class CMSTest < Minitest::Test
   end
 
   def test_create_file_without_name
-    post '/create', new_file: ''
+    post '/create', {new_file: ''}, admin_signin
     assert_equal 422, last_response.status
     assert_includes last_response.body, "Please enter a document name."
   end
 
   def test_create_file_without_extension
-    post '/create', new_file: 'ruby'
+    post '/create', {new_file: 'ruby'}, admin_signin
     assert_equal 422, last_response.status
     assert_includes last_response.body, "Please include an extension."
   end

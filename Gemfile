@@ -7,6 +7,7 @@ gem 'erubis'
 gem 'rack'
 gem 'minitest'
 gem 'redcarpet'
+gem 'bcrypt'
 
 group :development do
   gem 'pry'

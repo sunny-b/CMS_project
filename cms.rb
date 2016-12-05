@@ -4,6 +4,8 @@ require 'sinatra/content_for'
 require 'tilt/erubis'
 require 'rack'
 require 'redcarpet'
+require 'bcrypt'
+require 'yaml'
 require 'pry'
 
 configure do
@@ -15,12 +17,28 @@ before do
   session[:username] ||= nil
 end
 
+def verify_login
+  unless session[:username]
+    session[:message] = "You must login."
+    redirect "/users/signin"
+  end
+end
+
 def data_path
   if ENV["RACK_ENV"] == 'test'
     File.expand_path("../test/data", __FILE__)
   else
     File.expand_path("../data", __FILE__)
   end
+end
+
+def load_user_credentials
+  credentials = if ENV["RACK_ENV"] == 'test'
+    File.expand_path("../test/users.yml", __FILE__)
+  else
+    File.expand_path("../users.yml", __FILE__)
+  end
+  YAML.load_file(credentials)
 end
 
 def markdown_to_html(text)
@@ -50,19 +68,23 @@ def nonexistant_file(file)
 end
 
 get '/' do
-  if session[:username]
-    pattern = File.join(data_path, "*")
-    @docs = Dir.glob(pattern).map { |file| File.basename file }
-    erb :home
-  else
-    redirect "/users/signin"
-  end
+  verify_login
+
+  pattern = File.join(data_path, "*")
+  @docs = Dir.glob(pattern).map { |file| File.basename file }
+  erb :home
+end
+
+def correct_login?(users, user, password)
+  users[user] == password
 end
 
 post "/users/signin" do
+  users = load_user_credentials
+
   username = params[:username]
-  password = params[:password]
-  if username == 'admin' && password == 'secret'
+  password = BCrypt::Password.create(params[:password])
+  if correct_login?(users, username, password)
     session[:username] = username
     session[:message] = 'Welcome!'
     redirect '/'
@@ -83,10 +105,14 @@ get '/users/signin' do
 end
 
 get '/new' do
+  verify_login
+
   erb :new_file
 end
 
 post '/create' do
+  verify_login
+
   doc_name = params[:new_file].strip
   if doc_name.empty?
     session[:message] = "Please enter a document name."
@@ -114,6 +140,8 @@ get '/:file_name' do
 end
 
 get "/:file_name/edit" do
+  verify_login
+
   @file, file_path = get_file_and_filepath(params[:file_name], data_path)
   if File.exist? file_path
     @contents = File.read(file_path)
@@ -124,6 +152,8 @@ get "/:file_name/edit" do
 end
 
 post "/:file_name" do
+  verify_login
+
   file_name, file_path = get_file_and_filepath(params[:file_name], data_path)
 
   contents = params[:file_contents]
@@ -134,6 +164,8 @@ post "/:file_name" do
 end
 
 post "/:file_name/destroy" do
+  verify_login
+
   file_name, file_path = get_file_and_filepath(params[:file_name], data_path)
   File.delete(file_path)
 
