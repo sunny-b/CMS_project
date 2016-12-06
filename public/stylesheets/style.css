@@ -12,7 +12,7 @@ p.message {
   background: yellow;
 }
 
-form.delete {
+form.inline {
   display: inline;
 }
 

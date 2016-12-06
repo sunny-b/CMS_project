@@ -135,6 +135,12 @@ class CMSTest < Minitest::Test
     assert_includes last_response.body, "Please include an extension."
   end
 
+  def test_invalid_extension
+    post "/create", {new_file: "new_file.jpg"}, admin_signin
+    assert_equal 422, last_response.status
+    assert_includes last_response.body, "Only .md and .txt extensions are supported."
+  end
+
   def test_delete_file
     create_document 'test.txt'
 
@@ -146,6 +152,19 @@ class CMSTest < Minitest::Test
 
     get '/'
     refute_includes last_response.body, 'test.txt'
+  end
+
+  def test_duplicate_file
+    create_document 'test.txt'
+
+    post "/test.txt/duplicate", {}, admin_signin
+    assert_equal 302, last_response.status
+    assert_equal "test.txt was duplicated.", session[:message]
+
+    get last_response["Location"]
+
+    get '/'
+    assert_includes last_response.body, 'test_copy.txt'
   end
 
   def test_redirect_if_loggedoff

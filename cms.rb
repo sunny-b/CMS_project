@@ -47,13 +47,17 @@ def markdown_to_html(text)
 end
 
 def load_contents(file)
-  contents = File.read(file)
-  case File.extname(file)
-  when ".md"
-    erb markdown_to_html(contents)
-  when '.txt'
-    headers["Content-Type"] = "text/plain"
-    contents
+  if %w(.jpg .png).include? File.extname(file)
+    send_file File.join(file)
+  elsif
+    contents = File.read(file)
+    case File.extname(file)
+    when ".md"
+      erb markdown_to_html(contents)
+    when '.txt'
+      headers["Content-Type"] = "text/plain"
+      contents
+    end
   end
 end
 
@@ -73,6 +77,64 @@ get '/' do
   pattern = File.join(data_path, "*")
   @docs = Dir.glob(pattern).map { |file| File.basename file }
   erb :home
+end
+
+get '/img' do
+  erb :img_upload
+end
+
+get '/users/signup' do
+  erb :signup
+end
+
+get '/users/signin' do
+  erb :signin
+end
+
+get '/new' do
+  verify_login
+
+  erb :new_file
+end
+
+get "/:file_name/edit" do
+  verify_login
+
+  @file, file_path = get_file_and_filepath(params[:file_name], data_path)
+  if File.exist? file_path
+    @contents = File.read(file_path)
+    erb :file_edit
+  else
+    nonexistant_file(@file)
+  end
+end
+
+get '/:file_name' do
+  file_name, file_path = get_file_and_filepath(params[:file_name], data_path)
+  if File.exist? file_path
+    load_contents(file_path)
+  else
+    nonexistant_file(file_name)
+  end
+end
+
+post '/img' do
+  filename = params[:img_file][:filename]
+  image_file = params[:img_file][:tempfile]
+  if params[:img_file].empty?
+    session[:message] = "Please choose an image."
+    erb :img_upload
+  elsif !%w(.jpg .png).include? File.extname(filename)
+    session[:message] = "Unsupported file type."
+    erb :img_upload
+  else
+    file_path = File.join(data_path, filename)
+    File.open(file_path, 'wb') do |file|
+      file.write(File.read(image_file))
+    end
+    session[:message] = "#{filename} was created."
+    redirect '/'
+  end
 end
 
 def correct_login?(user, password)
@@ -97,32 +159,56 @@ post "/users/signin" do
   end
 end
 
+def valid_user?(user)
+  users = load_user_credentials
+  !users.key?(user) && !user.empty?
+end
+
+def valid_password?(password, confirm_password)
+  (password == confirm_password) && !password.empty? && (password.size > 6)
+end
+
+post "/users/signup" do
+  username = params[:username]
+  password = params[:password]
+  confirm = params[:con_password]
+
+  if !valid_user?(username)
+    session[:message] = "Username is either taken or empty."
+    erb :signup
+  elsif !valid_password?(password, confirm)
+    session[:message] = "Passwords either don't match or are too short."
+    erb :signup
+  elsif valid_user?(username) && valid_password?(password, confirm)
+    File.open('users.yml', 'a') do |file|
+      file.write (username + ': ' + BCrypt::Password.create(password))
+    end
+    session[:message] = "#{username} was created. Please login."
+    redirect '/users/signin'
+  end
+end
+
 post "/users/signout" do
   session[:username] = nil
   session[:message] = "You have been logged out."
   redirect "/users/signin"
 end
 
-get '/users/signin' do
-  erb :signin
-end
-
-get '/new' do
-  verify_login
-
-  erb :new_file
-end
-
 post '/create' do
   verify_login
 
   doc_name = params[:new_file].strip
+  extension = File.extname(doc_name)
   if doc_name.empty?
     session[:message] = "Please enter a document name."
     status 422
     erb :new_file
-  elsif File.extname(doc_name).empty?
+  elsif extension.empty?
     session[:message] = "Please include an extension."
+    status 422
+    erb :new_file
+  elsif !%w(.md .txt).include? extension
+    session[:message] = "Only .md and .txt extensions are supported."
     status 422
     erb :new_file
   else
@@ -130,27 +216,6 @@ post '/create' do
 
     session[:message] = "#{doc_name} was created."
     redirect "/"
-  end
-end
-
-get '/:file_name' do
-  file_name, file_path = get_file_and_filepath(params[:file_name], data_path)
-  if File.exist? file_path
-    load_contents(file_path)
-  else
-    nonexistant_file(file_name)
-  end
-end
-
-get "/:file_name/edit" do
-  verify_login
-
-  @file, file_path = get_file_and_filepath(params[:file_name], data_path)
-  if File.exist? file_path
-    @contents = File.read(file_path)
-    erb :file_edit
-  else
-    nonexistant_file(@file)
   end
 end
 
@@ -173,5 +238,19 @@ post "/:file_name/destroy" do
   File.delete(file_path)
 
   session[:message] = "#{file_name} was deleted."
+  redirect "/"
+end
+
+post "/:file_name/duplicate" do
+  verify_login
+
+  file_name, file_path = get_file_and_filepath(params[:file_name], data_path)
+  contents = File.read(file_path)
+  ext = File.extname(file_name)
+  new_file = file_name.gsub(ext, '') + "_copy" + ext
+
+  File.open(File.join(data_path, new_file), "w+") { |file| file.write contents }
+
+  session[:message] = "#{file_name} was duplicated."
   redirect "/"
 end

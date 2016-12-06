@@ -3,8 +3,11 @@
     <li>
       <a href="/<%= doc %>"><%= doc %></a>
       <a href="/<%= doc %>/edit">edit</a>
-      <form class="delete" action="/<%= doc %>/destroy" method="post">
+      <form class="inline" action="/<%= doc %>/destroy" method="post">
         <button type="submit">Delete</button>
+      </form>
+      <form class="inline" action="/<%= doc %>/duplicate" method="post">
+        <button type="submit">Duplicate</button>
       </form>
     </li>
   <% end %>
@@ -12,6 +15,9 @@
 
 <div class="footer">
   <a href="/new">New Document</a>
+  <br>
+  <br>
+  <a href="/img">Upload Image</a>
   <br>
   <br>
   <% if session[:username] %>
